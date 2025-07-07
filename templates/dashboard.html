@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1 class="title">Welcome, {{ current_user.username }}</h1>
+<a class="button is-link" href="{{ url_for('new_script') }}">New Script</a>
+<table class="table is-fullwidth">
+  <thead>
+    <tr><th>Title</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for s in scripts %}
+    <tr>
+      <td>{{ s.title }}</td>
+      <td><a class="button is-small" href="{{ url_for('view_script', script_id=s.id) }}">Open</a></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="2">No scripts yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
