@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Pineapple Prompt – Local Teleprompter (v10 – softer matching)</title>
+<style>
+  :root { --brand:#e16416; }
+  html,body{
+    height:100%;margin:0;background:#000;color:#fff;
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex;flex-direction:column;
+  }
+  /* ─── Controls ─────────────────────────────────────────── */
+  #controls{background:#111;padding:1rem;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;}
+  textarea{flex:1 0 100%;height:110px;resize:vertical;padding:0.5rem;font-size:1rem;border:2px solid var(--brand);border-radius:6px}
+  button{background:var(--brand);color:#fff;border:none;padding:0.6rem 1.2rem;font-size:1rem;border-radius:6px;cursor:pointer}
+  button[disabled]{opacity:.4;cursor:not-allowed}
+  input[type="number"]{width:5rem;padding:0.4rem;border:1px solid #666;border-radius:4px;background:#222;color:#fff;text-align:right;}
+  label{font-size:.9rem;margin-right:.25rem;}
+  #status{flex:1 0 100%;font-size:0.9rem;color:var(--brand);min-height:1.2em}
+  /* ─── Prompter ─────────────────────────────────────────── */
+  #prompter{flex:1;overflow:hidden;position:relative;}
+  #textWrapper{position:absolute;top:0;left:0;width:100%;text-align:center;transition:transform .16s ease-out;will-change:transform;}
+  .line{font-size:3rem;line-height:1.25em;padding:0 1rem;margin:0;white-space:pre-wrap;opacity:.12;color:#fff;transition:opacity .15s,color .15s;}
+  .highlight{color:var(--brand);opacity:1;font-weight:700;}
+</style>
+</head>
+<body>
+  <div id="controls">
+    <textarea id="scriptInput" placeholder="Paste or type your script here – one line per cue…"></textarea>
+
+    <button id="listenBtn" type="button">Mic Mode</button>
+    <button id="autoBtn"   type="button">Auto Scroll</button>
+    <label for="wpmInput">WPM</label><input id="wpmInput" type="number" min="60" max="300" value="150" />
+
+    <button id="stopBtn" type="button" disabled>Stop</button>
+    <p id="status"></p>
+  </div>
+
+  <div id="prompter"><div id="textWrapper"></div></div>
+
+<script>
+  // ============ Config (tweak thresholds here) ============
+  const LISTEN_THRESHOLD      = 0.6;  // line‑advance when ≥60 % of words match
+  const CHECKPOINT_THRESHOLD  = 0.25; // auto‑scroll pauses if <25 % of previous line matches speech
+
+  // ============ Helpers & DOM refs ==========
+  const $ = id => document.getElementById(id);
+  const listenBtn = $("listenBtn");
+  const autoBtn   = $("autoBtn");
+  const stopBtn   = $("stopBtn");
+  const wpmInput  = $("wpmInput");
+  const statusP   = $("status");
+  const textWrap  = $("textWrapper");
+  const prompter  = $("prompter");
+  const scriptInput = $("scriptInput");
+
+  let lines = [], currentLine = 0;
+  let recognition = null;
+  let listening = false;
+  let autoTimer = null;
+  let lastSpoken = "";
+
+  // ---------- Chunking helper ----------
+  function chunkLine(sentence, maxWords=10){
+    const words = sentence.split(/\s+/);
+    const chunks=[];
+    for(let i=0;i<words.length;i+=maxWords){
+      chunks.push(words.slice(i,i+maxWords).join(" "));
+    }
+    return chunks;
+  }
+
+  // ---------- Setup script ----------
+  function setupScript(text){
+    lines = [];
+    text.split(/\r?\n/).forEach(raw=>{
+      const t = raw.trim();
+      if(t) lines.push(...chunkLine(t));
+    });
+
+    textWrap.innerHTML = "";
+    lines.forEach(l=>{
+      const div=document.createElement("div");
+      div.className="line";
+      div.textContent=l;
+      textWrap.appendChild(div);
+    });
+    currentLine=0;
+    updateDisplay();
+  }
+
+  // ---------- Display ----------
+  function updateDisplay(){
+    document.querySelectorAll(".highlight").forEach(el=>el.classList.remove("highlight"));
+    const active=textWrap.children[currentLine];
+    if(active) active.classList.add("highlight");
+    if(active){
+      const mid=active.offsetTop+active.offsetHeight/2;
+      const desired=prompter.clientHeight*0.33;
+      textWrap.style.transform=`translateY(-${Math.max(0,mid-desired)}px)`;
+    }
+  }
+
+  // ---------- Speech Recognition ----------
+  function initRec(){
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){alert("Web Speech API not supported");return null;}
+    const rec=new SR();
+    rec.continuous=true;rec.interimResults=true;rec.lang="en-GB";
+    rec.onstart=()=>statusP.textContent="Listening…";
+    rec.onend=()=>{if(listening) rec.start();};
+    rec.onerror=e=>statusP.textContent=`Error: ${e.error}`;
+    rec.onresult=e=>{
+      const last=e.results[e.results.length-1];
+      if(!last) return;
+      lastSpoken=last[0].transcript.trim().toLowerCase();
+      statusP.textContent=`Heard: \"${lastSpoken}\"`;
+    };
+    return rec;
+  }
+
+  // ---------- Matching ----------
+  const stopWords=new Set(["a","an","the","and","of","in","to","is","it","that","this","for","on","with","at","by","be"]);
+  const tokens=s=>s.split(/\s+/).filter(w=>w&&!stopWords.has(w));
+  function matchRatio(a,b){
+    const setA=new Set(tokens(a));
+    const arrB=tokens(b);
+    if(!arrB.length) return 0;
+    const hits=arrB.filter(w=>setA.has(w)).length;
+    return hits/arrB.length;
+  }
+
+  // ---------- Auto Scroll ----------
+  function scheduleNextAuto(){
+    clearTimeout(autoTimer);
+    if(currentLine>=lines.length){ stopAll(); return; }
+
+    // checkpoint: if previous line is very different from what was spoken, pause
+    if(currentLine>0){
+      const prevLine=lines[currentLine-1].toLowerCase();
+      if(matchRatio(lastSpoken,prevLine)<CHECKPOINT_THRESHOLD){
+        statusP.textContent="Off‑script or silent. Auto paused.";
+        stopAutoScroll();
+        return;
+      }
+    }
+
+    updateDisplay();
+    const words=lines[currentLine].split(/\s+/).length;
+    const wpm=parseInt(wpmInput.value)||150;
+    const msPerWord=60000/wpm;
+    autoTimer=setTimeout(()=>{
+      currentLine++;
+      scheduleNextAuto();
+    }, words*msPerWord);
+  }
+
+  function startAuto(){
+    if(listening) return; // prevent dual modes
+    const script=scriptInput.value.trim();
+    if(!script){alert("Please enter a script first!");return;}
+    setupScript(script);
+    recognition=initRec();
+    if(!recognition) return;
+    listening=true;
+    recognition.start();
+    scheduleNextAuto();
+    autoBtn.disabled=true;
+    listenBtn.disabled=true;
+    stopBtn.disabled=false;
+    statusP.textContent=`Auto scrolling at ${wpmInput.value} WPM…`;
+  }
+
+  function stopAutoScroll(){
+    clearTimeout(autoTimer);
+    autoBtn.disabled=false;
+    listenBtn.disabled=false;
+  }
+
+  // ---------- Mic Mode ----------
+  function startListenMode(){
+    if(listening) return;
+    const script=scriptInput.value.trim();
+    if(!script){alert("Please enter a script first!");return;}
+    setupScript(script);
+    recognition=initRec();
+    if(!recognition) return;
+
+    recognition.onresult=e=>{
+      const last=e.results[e.results.length-1];
+      if(!last) return;
+      const spoken=last[0].transcript.trim().toLowerCase();
+      statusP.textContent=`Heard: \"${spoken}\"`;
+      const target=lines[currentLine].toLowerCase();
+      if(matchRatio(spoken,target)>=LISTEN_THRESHOLD){
+        currentLine++;updateDisplay();
+        if(currentLine>=lines.length) stopAll();
+      }
+    };
+
+    listening=true;
+    recognition.start();
+    listenBtn.disabled=true;
+    autoBtn.disabled=true;
+    stopBtn.disabled=false;
+  }
+
+  // ---------- Stop ----------
+  function stopAll(){
+    clearTimeout(autoTimer);
+    if(recognition){recognition.stop();}
+    listening=false;
+    stopBtn.disabled=true;
+    autoBtn.disabled=false;
+    listenBtn.disabled=false;
+    statusP.textContent="Stopped.";
+  }
+
+  // ---------- Wiring ----------
+  autoBtn.addEventListener("click",startAuto);
+  listenBtn.addEventListener("click",startListenMode);
+  stopBtn.addEventListener("click",stopAll);
+  window.addEventListener("keydown",e=>{
+    if(e.key==="ArrowDown"&&!autoTimer){currentLine=Math.min(lines.length-1,++currentLine);updateDisplay();}
+  });
+</script>
+</body>
+</html>
