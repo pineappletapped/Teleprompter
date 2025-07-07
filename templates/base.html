@@ -18,6 +18,7 @@
     <div class="navbar-end">
       {% if current_user.is_authenticated %}
       <a class="navbar-item" href="{{ url_for('dashboard') }}">Dashboard</a>
+      <a class="navbar-item" href="{{ url_for('new_live') }}">Live</a>
       <a class="navbar-item" href="{{ url_for('logout') }}">Logout</a>
       {% else %}
       <a class="navbar-item" href="{{ url_for('login') }}">Login</a>

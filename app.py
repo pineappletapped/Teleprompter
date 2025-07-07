@@ -1,4 +1,12 @@
-from flask import Flask, render_template, redirect, url_for, request, flash
+from flask import (
+    Flask,
+    render_template,
+    redirect,
+    url_for,
+    request,
+    flash,
+    jsonify,
+)
 from flask_login import (
     LoginManager,
     login_user,
@@ -9,6 +17,7 @@ from flask_login import (
 )
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+import uuid
 import os
 
 app = Flask(__name__)
@@ -48,6 +57,13 @@ class Script(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     title = db.Column(db.String(200))
     body = db.Column(db.Text)
+
+
+class LiveSession(db.Model):
+    id = db.Column(db.String(32), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    text = db.Column(db.Text, default="")
+    owner = db.relationship("User", backref="live_sessions")
 
 
 @login_manager.user_loader
@@ -114,6 +130,9 @@ def dashboard():
 @login_required
 def new_script():
     if request.method == "POST":
+        if Script.query.filter_by(user_id=current_user.id).count() >= 20:
+            flash("Script limit reached (20). Delete old scripts to add more.")
+            return redirect(url_for("dashboard"))
         title = request.form["title"]
         body = request.form["body"]
         s = Script(title=title, body=body, owner=current_user)
@@ -131,6 +150,41 @@ def view_script(script_id):
         flash("Unauthorized")
         return redirect(url_for("dashboard"))
     return render_template("teleprompter.html", script=script)
+
+
+@app.route("/live/new")
+@login_required
+def new_live():
+    session = LiveSession(id=uuid.uuid4().hex, owner=current_user)
+    db.session.add(session)
+    db.session.commit()
+    return redirect(url_for("live_input", session_id=session.id))
+
+
+@app.route("/live/<session_id>/input", methods=["GET", "POST"])
+@login_required
+def live_input(session_id):
+    session = LiveSession.query.get_or_404(session_id)
+    if session.owner != current_user:
+        flash("Unauthorized")
+        return redirect(url_for("dashboard"))
+    if request.method == "POST":
+        session.text = request.form.get("text", "")
+        db.session.commit()
+        return ("", 204)
+    return render_template("live_input.html", session=session)
+
+
+@app.route("/live/<session_id>/display")
+def live_display(session_id):
+    session = LiveSession.query.get_or_404(session_id)
+    return render_template("live_display.html", session=session)
+
+
+@app.route("/live/<session_id>/data")
+def live_data(session_id):
+    session = LiveSession.query.get_or_404(session_id)
+    return jsonify(text=session.text or "")
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@
 {% block content %}
 <h1 class="title">Welcome, {{ current_user.username }}</h1>
 <a class="button is-link" href="{{ url_for('new_script') }}">New Script</a>
+<a class="button is-info" href="{{ url_for('new_live') }}">Start Live Session</a>
 <table class="table is-fullwidth">
   <thead>
     <tr><th>Title</th><th></th></tr>

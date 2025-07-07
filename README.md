@@ -1,6 +1,8 @@
 # Teleprompter
 
-This project now includes a simple Flask based web app that provides user registration, login and the ability to save teleprompter scripts.
+This project now includes a simple Flask based web app that provides user registration, login and the ability to save teleprompter scripts. Each user may store up to 20 scripts.
+
+The app also offers a **Live Session** mode where a presenter can edit text on one device and display it on another in real time.
 
 ## Running locally
 
