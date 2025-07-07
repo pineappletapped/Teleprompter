@@ -12,9 +12,16 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import os
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "replace-this-with-a-secure-key"
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(
-    app.root_path, "teleprompter.db"
+
+# Allow configuration via environment variables so the app can be deployed on
+# shared hosting providers such as Asura. A default SQLite database is used
+# for local development.
+app.config["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY", "replace-this-with-a-secure-key"
+)
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+    "DATABASE_URL",
+    "sqlite:///" + os.path.join(app.root_path, "teleprompter.db"),
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
