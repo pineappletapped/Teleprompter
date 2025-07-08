@@ -1,27 +1,20 @@
 # Teleprompter
 
-This project now includes a simple Flask based web app that provides user registration, login and the ability to save teleprompter scripts. Each user may store up to 20 scripts.
+This repo now provides a fully static HTML/JavaScript teleprompter application that can be hosted on basic shared web hosting without any server side code.
 
-The app also offers a **Live Session** mode where a presenter can edit text on one device and display it on another in real time.
+Features include:
 
-## Running locally
+- Local registration and login stored in `localStorage`
+- Save up to **20 scripts per user**
+- Teleprompter page with microphone or auto‑scroll modes
+- Simple "Live Session" that syncs text between an input page and a display page using browser storage
 
-```
-pip install -r requirements.txt
-python app.py
-```
+## Usage
 
-After starting the server, open `http://localhost:5000` in your browser.
+Simply upload all HTML and JS files to your hosting account. Open `index.html` in your browser to register a user and start creating scripts.
 
-## Deploying on Asura shared hosting
+### Live Sessions
 
-1. Upload the project files to your Python application directory.
-2. Install the dependencies using Asura's Python package manager:
-   `pip install --user -r requirements.txt`.
-3. Point Asura's WSGI configuration to the provided `wsgi.py` file.
-4. Set environment variables `SECRET_KEY` and (optionally) `DATABASE_URL`
-   through Asura's control panel.
-5. Restart the application from the hosting dashboard.
+To start a live session open `live_input.html` and share the generated link with another device that loads `live_display.html`. Updating the text input will update the display page for any open browser tabs on the same origin.
 
-The `wsgi.py` file exposes the Flask application as `application`, which works
-with most shared hosting WSGI setups.
+No server is required, but the live session will only work for clients served from the same domain.

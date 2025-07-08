@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>New Script</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <script src="app.js"></script>
+</head>
+<body class="section">
+  <div class="container">
+    <h1 class="title">New Script</h1>
+    <form onsubmit="saveScript(event)">
+      <div class="field">
+        <label class="label">Title</label>
+        <div class="control"><input class="input" name="title" required></div>
+      </div>
+      <div class="field">
+        <label class="label">Body</label>
+        <div class="control"><textarea class="textarea" name="body" rows="8" required></textarea></div>
+      </div>
+      <div class="field"><button class="button is-primary" type="submit">Save</button></div>
+    </form>
+  </div>
+</body>
+</html>

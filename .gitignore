@@ -1,4 +1,4 @@
+# ignore local storage files if exported
+*.db
 __pycache__/
-instance/
-teleprompter.db
 *.pyc
