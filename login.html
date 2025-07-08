@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <script src="app.js"></script>
+</head>
+<body class="section">
+  <div class="container">
+    <h1 class="title">Login</h1>
+    <form onsubmit="login(event)">
+      <div class="field">
+        <label class="label">Username</label>
+        <div class="control"><input class="input" name="username" required></div>
+      </div>
+      <div class="field">
+        <label class="label">Password</label>
+        <div class="control"><input class="input" type="password" name="password" required></div>
+      </div>
+      <div class="field"><button class="button is-primary" type="submit">Login</button></div>
+    </form>
+    <p>Need an account? <a href="register.html">Register</a></p>
+  </div>
+</body>
+</html>

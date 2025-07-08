@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Pineapple Prompt – Local Teleprompter (v10 – softer matching)</title>
+<title>Teleprompter</title>
+<script src="app.js"></script>
 <style>
   :root { --brand:#e16416; }
   html,body{
@@ -25,7 +26,7 @@
   .highlight{color:var(--brand);opacity:1;font-weight:700;}
 </style>
 </head>
-<body>
+<body onload="loadTeleprompter()">
   <div id="controls">
     <textarea id="scriptInput" placeholder="Paste or type your script here – one line per cue…"></textarea>
 

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <script src="app.js"></script>
+</head>
+<body class="section" onload="renderDashboard()">
+  <div class="container">
+    <div class="level">
+      <div class="level-left"><h1 class="title">Welcome, <span id="welcome"></span></h1></div>
+      <div class="level-right"><button class="button" onclick="logout()">Logout</button></div>
+    </div>
+    <a class="button is-link" href="script_form.html">New Script</a>
+    <a class="button is-info" href="live_input.html">Start Live Session</a>
+    <table class="table is-fullwidth" style="margin-top:1rem;">
+      <thead><tr><th>Title</th><th></th></tr></thead>
+      <tbody id="scriptList"></tbody>
+    </table>
+  </div>
+</body>
+</html>

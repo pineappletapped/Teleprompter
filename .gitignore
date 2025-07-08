@@ -1,0 +1,4 @@
+# ignore local storage files if exported
+*.db
+__pycache__/
+*.pyc
